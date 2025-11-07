@@ -12,41 +12,33 @@ jobs:
     runs-on: windows-latest
 
     steps:
-      # 1. Клонируем проект
       - name: Checkout Code
         uses: actions/checkout@v4
 
-      # 2. Скачиваем и билдим vcpkg
       - name: Setup vcpkg
         run: |
           git clone --depth=1 https://github.com/microsoft/vcpkg.git
           .\vcpkg\bootstrap-vcpkg.bat
         shell: powershell
 
-      # 3. Устанавливаем xlsxio и зависимости СТАТИЧЕСКИ
       - name: Install Static Dependencies (xlsxio)
         run: |
           # ИСПОЛЬЗУЕМ СТАТИЧЕСКИЙ ТРИПЛЕТ
           .\vcpkg\vcpkg install xlsxio:x64-windows-static
         shell: powershell
 
-      # 4. Конфигурируем CMake с toolchain vcpkg
       - name: Configure CMake
         run: cmake -B build -S . `
             -DCMAKE_BUILD_TYPE=Release `
-            # Подключаем vcpkg toolchain file для автоматического поиска библиотек
             -DCMAKE_TOOLCHAIN_FILE=${{ github.workspace }}\vcpkg\scripts\buildsystems\vcpkg.cmake
         shell: powershell
 
-      # 5. Сборка проекта
       - name: Build
         run: cmake --build build --config Release
         shell: powershell
 
-      # 6. Загружаем .exe как артефакт
       - name: Upload EXE artifact
         uses: actions/upload-artifact@v4
         with:
           name: MyApp-exe
-          # Исполняемый файл будет находиться в build/Release
           path: build/Release/MyApp.exe
