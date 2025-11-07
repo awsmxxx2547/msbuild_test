@@ -1,9 +1,8 @@
-cmake_minimum_required(VERSION 3.16)  # <-- ДОБАВЛЕНО
-project(MyApp)                       # <-- ДОБАВЛЕНО
+cmake_minimum_required(VERSION 3.16)
+project(MyApp)
 
 # --- Настройки для статической линковки ---
 set(BUILD_SHARED_LIBS OFF) 
-# Эта строка теперь не так критична, так как триплет указан в шаге GitHub Actions
 set(VCPKG_TARGET_TRIPLET "x64-windows-static" CACHE STRING "vcpkg triplet for static linking")
 
 set(CMAKE_CXX_STANDARD 17)
@@ -14,9 +13,13 @@ find_package(xlsxio CONFIG REQUIRED)
 
 add_executable(MyApp src/main.cpp)
 
-# Print found information for debugging (Опционально)
-message(STATUS "xlsxio found: ${xlsxio_FOUND}")
-message(STATUS "xlsxio version: ${xlsxio_VERSION}")
+# 🔑 КЛЮЧЕВОЕ ИСПРАВЛЕНИЕ: 
+# Явно добавляем пути включения (include directories) из целей vcpkg к вашему приложению.
+# Используем PRIVATE, чтобы пути были доступны только для компиляции MyApp.
+target_include_directories(MyApp PRIVATE 
+    $<TARGET_PROPERTY:xlsxio::xlsxio_write,INTERFACE_INCLUDE_DIRECTORIES>
+    $<TARGET_PROPERTY:xlsxio::xlsxio_read,INTERFACE_INCLUDE_DIRECTORIES>
+)
 
 # Линкуем с импортированными целями
 target_link_libraries(MyApp PRIVATE xlsxio::xlsxio_write xlsxio::xlsxio_read)
