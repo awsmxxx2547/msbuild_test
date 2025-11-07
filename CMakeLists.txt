@@ -4,6 +4,10 @@ project(MyApp LANGUAGES CXX)
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
+# Force static linking
+set(BUILD_SHARED_LIBS OFF)
+set(CMAKE_MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>")
+
 # Find the package
 find_package(xlsxio CONFIG REQUIRED)
 
@@ -30,4 +34,20 @@ else()
     else()
         message(FATAL_ERROR "xlsxio libraries not found")
     endif()
+endif()
+
+# Additional settings for static linking
+if(WIN32)
+    # On Windows, link against static runtime
+    if(MSVC)
+        target_compile_options(MyApp PRIVATE $<$<CONFIG:>:/MT> $<$<CONFIG:Debug>:/MTd> $<$<CONFIG:Release>:/MT>)
+    endif()
+    
+    # For MinGW on Windows
+    if(MINGW)
+        target_link_libraries(MyApp PRIVATE -static -static-libgcc -static-libstdc++)
+    endif()
+else()
+    # On Linux/macOS
+    target_link_libraries(MyApp PRIVATE -static-libgcc -static-libstdc++)
 endif()
