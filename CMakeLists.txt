@@ -4,50 +4,44 @@ project(MyApp LANGUAGES CXX)
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
-# Force static linking
-set(BUILD_SHARED_LIBS OFF)
-set(CMAKE_MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>")
+include(ExternalProject)
 
-# Find the package
-find_package(xlsxio CONFIG REQUIRED)
+# Build xlsxio as static library
+ExternalProject_Add(xlsxio_external
+    GIT_REPOSITORY https://github.com/brechtsanders/xlsxio.git
+    GIT_TAG master
+    CMAKE_ARGS -DBUILD_SHARED_LIBS=OFF -DCMAKE_BUILD_TYPE=Release
+    INSTALL_DIR ${CMAKE_BINARY_DIR}/xlsxio-install
+    BUILD_BYPRODUCTS 
+        ${CMAKE_BINARY_DIR}/xlsxio-install/lib/${CMAKE_STATIC_LIBRARY_PREFIX}xlsxio_write${CMAKE_STATIC_LIBRARY_SUFFIX}
+        ${CMAKE_BINARY_DIR}/xlsxio-install/lib/${CMAKE_STATIC_LIBRARY_PREFIX}xlsxio_read${CMAKE_STATIC_LIBRARY_SUFFIX}
+)
 
-# Print found information for debugging
-message(STATUS "xlsxio found: ${xlsxio_FOUND}")
-message(STATUS "xlsxio version: ${xlsxio_VERSION}")
+# Create imported targets
+add_library(xlsxio_write STATIC IMPORTED)
+add_library(xlsxio_read STATIC IMPORTED)
+
+set_target_properties(xlsxio_write PROPERTIES
+    IMPORTED_LOCATION ${CMAKE_BINARY_DIR}/xlsxio-install/lib/${CMAKE_STATIC_LIBRARY_PREFIX}xlsxio_write${CMAKE_STATIC_LIBRARY_SUFFIX}
+    INTERFACE_INCLUDE_DIRECTORIES ${CMAKE_BINARY_DIR}/xlsxio-install/include
+)
+
+set_target_properties(xlsxio_read PROPERTIES
+    IMPORTED_LOCATION ${CMAKE_BINARY_DIR}/xlsxio-install/lib/${CMAKE_STATIC_LIBRARY_PREFIX}xlsxio_read${CMAKE_STATIC_LIBRARY_SUFFIX}
+    INTERFACE_INCLUDE_DIRECTORIES ${CMAKE_BINARY_DIR}/xlsxio-install/include
+)
+
+add_dependencies(xlsxio_write xlsxio_external)
+add_dependencies(xlsxio_read xlsxio_external)
 
 add_executable(MyApp src/main.cpp)
+target_link_libraries(MyApp PRIVATE xlsxio_write xlsxio_read)
 
-# Link the libraries - try different target names
-if(TARGET xlsxio::xlsxio_write)
-    target_link_libraries(MyApp PRIVATE xlsxio::xlsxio_write xlsxio::xlsxio_read)
-elseif(TARGET xlsxio_write)
-    target_link_libraries(MyApp PRIVATE xlsxio_write xlsxio_read)
-else()
-    # Fallback: try to find and link manually
-    find_path(XLSXIO_INCLUDE_DIR xlsxio_write.h)
-    find_library(XLSXIO_WRITE_LIB xlsxio_write)
-    find_library(XLSXIO_READ_LIB xlsxio_read)
-    
-    if(XLSXIO_INCLUDE_DIR AND XLSXIO_WRITE_LIB AND XLSXIO_READ_LIB)
-        target_include_directories(MyApp PRIVATE ${XLSXIO_INCLUDE_DIR})
-        target_link_libraries(MyApp PRIVATE ${XLSXIO_WRITE_LIB} ${XLSXIO_READ_LIB})
-    else()
-        message(FATAL_ERROR "xlsxio libraries not found")
-    endif()
-endif()
-
-# Additional settings for static linking
+# Static linking
 if(WIN32)
-    # On Windows, link against static runtime
-    if(MSVC)
-        target_compile_options(MyApp PRIVATE $<$<CONFIG:>:/MT> $<$<CONFIG:Debug>:/MTd> $<$<CONFIG:Release>:/MT>)
-    endif()
-    
-    # For MinGW on Windows
     if(MINGW)
         target_link_libraries(MyApp PRIVATE -static -static-libgcc -static-libstdc++)
     endif()
 else()
-    # On Linux/macOS
     target_link_libraries(MyApp PRIVATE -static-libgcc -static-libstdc++)
 endif()
