@@ -3,15 +3,18 @@ name: Build Windows EXE
 on:
   push:
     branches: [ master ]
+  # Разрешает ручной запуск из интерфейса GitHub
   workflow_dispatch:
 
 jobs:
   build:
+    # Используем среду Windows
     runs-on: windows-latest
 
     steps:
       # 1. Клонируем проект
-      - uses: actions/checkout@v4
+      - name: Checkout Code
+        uses: actions/checkout@v4
 
       # 2. Скачиваем и билдим vcpkg
       - name: Setup vcpkg
@@ -20,18 +23,19 @@ jobs:
           .\vcpkg\bootstrap-vcpkg.bat
         shell: powershell
 
-      # 3. Устанавливаем xlsxio и зависимости (x64)
-      - name: Install dependencies
+      # 3. Устанавливаем xlsxio и зависимости СТАТИЧЕСКИ
+      - name: Install Static Dependencies (xlsxio)
         run: |
-          .\vcpkg\vcpkg install xlsxio:x64-windows
+          # ИСПОЛЬЗУЕМ СТАТИЧЕСКИЙ ТРИПЛЕТ
+          .\vcpkg\vcpkg install xlsxio:x64-windows-static
         shell: powershell
 
-      # 4. Конфигурируем CMake с toolchain vcpkg и архитектурой x64
+      # 4. Конфигурируем CMake с toolchain vcpkg
       - name: Configure CMake
         run: cmake -B build -S . `
             -DCMAKE_BUILD_TYPE=Release `
-            -DCMAKE_TOOLCHAIN_FILE=${{ github.workspace }}\vcpkg\scripts\buildsystems\vcpkg.cmake `
-            -A x64
+            # Подключаем vcpkg toolchain file для автоматического поиска библиотек
+            -DCMAKE_TOOLCHAIN_FILE=${{ github.workspace }}\vcpkg\scripts\buildsystems\vcpkg.cmake
         shell: powershell
 
       # 5. Сборка проекта
@@ -44,5 +48,5 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: MyApp-exe
-          path: build/Release/*.exe
-
+          # Исполняемый файл будет находиться в build/Release
+          path: build/Release/MyApp.exe
