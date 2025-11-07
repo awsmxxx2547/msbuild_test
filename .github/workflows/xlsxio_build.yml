@@ -20,14 +20,14 @@ jobs:
           .\vcpkg\bootstrap-vcpkg.bat
         shell: powershell
 
-      # 3. Install xlsxio with static linking
+      # 3. Install xlsxio with static linking and dependencies
       - name: Install dependencies (Static)
         run: |
           .\vcpkg\vcpkg install xlsxio:x64-windows-static
-          # List installed packages for verification
-          .\vcpkg\vcpkg list
-          echo "=== xlsxio static libraries ==="
-          dir "${{ github.workspace }}\vcpkg\installed\x64-windows-static\lib" | findstr xlsxio
+          echo "=== Listing installed libraries ==="
+          dir "${{ github.workspace }}\vcpkg\installed\x64-windows-static\lib" -name *xlsxio*
+          dir "${{ github.workspace }}\vcpkg\installed\x64-windows-static\lib" -name zlib*
+          dir "${{ github.workspace }}\vcpkg\installed\x64-windows-static\lib" -name *expat*
         shell: powershell
 
       # 4. Configure CMake for static linking
@@ -35,17 +35,21 @@ jobs:
         run: |
           if (Test-Path "build") { Remove-Item -Recurse -Force build }
           
+          # Set environment variable for vcpkg root
+          $vcpkgRoot = "${{ github.workspace }}\vcpkg"
+          echo "VCPKG_ROOT=$vcpkgRoot" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+          
           cmake -B build -S . `
             -DCMAKE_BUILD_TYPE=Release `
-            -DCMAKE_TOOLCHAIN_FILE="${{ github.workspace }}\vcpkg\scripts\buildsystems\vcpkg.cmake" `
+            -DCMAKE_TOOLCHAIN_FILE="$vcpkgRoot/scripts/buildsystems/vcpkg.cmake" `
             -DVCPKG_TARGET_TRIPLET=x64-windows-static `
-            -DCMAKE_MSVC_RUNTIME_LIBRARY=MultiThreaded `
+            -DVCPKG_ROOT="$vcpkgRoot" `
             -A x64
         shell: powershell
 
       # 5. Build project
       - name: Build
-        run: cmake --build build --config Release
+        run: cmake --build build --config Release --verbose
         shell: powershell
 
       # 6. Upload executable as artifact
@@ -54,14 +58,3 @@ jobs:
         with:
           name: MyApp-static-exe
           path: build/Release/*.exe
-
-      # 7. Verify it's static (optional)
-      - name: Verify static executable
-        run: |
-          $exePath = Get-ChildItem "build/Release/*.exe" | Select-Object -First 1
-          if ($exePath) {
-            echo "Checking dependencies of $($exePath.Name)"
-            # This will show if there are any DLL dependencies
-            dumpbin /DEPENDENTS $exePath.FullName
-          }
-        shell: powershell
