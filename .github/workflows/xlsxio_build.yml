@@ -2,7 +2,7 @@ name: Build Windows EXE
 
 on:
   push:
-    branches: [ master, main ]
+    branches: [ main ]
   workflow_dispatch:
 
 jobs:
@@ -10,7 +10,7 @@ jobs:
     runs-on: windows-latest
 
     steps:
-      # 1. Скачиваем репозиторий
+      # 1. Клонируем проект
       - uses: actions/checkout@v4
 
       # 2. Скачиваем и билдим vcpkg
@@ -20,20 +20,19 @@ jobs:
           .\vcpkg\bootstrap-vcpkg.bat
         shell: powershell
 
-      # 3. Ставим xlsxio (и зависимости) через vcpkg
+      # 3. Устанавливаем xlsxio и зависимости (x64)
       - name: Install dependencies
         run: |
           .\vcpkg\vcpkg install xlsxio:x64-windows
         shell: powershell
 
-      # 4. Конфигурируем CMake с использованием vcpkg
+      # 4. Конфигурируем CMake с toolchain vcpkg и архитектурой x64
       - name: Configure CMake
         run: cmake -B build -S . `
-          -DCMAKE_BUILD_TYPE=Release `
-          -DCMAKE_TOOLCHAIN_FILE=${{ github.workspace }}\vcpkg\scripts\buildsystems\vcpkg.cmake `
-          -A x64
+            -DCMAKE_BUILD_TYPE=Release `
+            -DCMAKE_TOOLCHAIN_FILE=${{ github.workspace }}\vcpkg\scripts\buildsystems\vcpkg.cmake `
+            -A x64
         shell: powershell
-
 
       # 5. Сборка проекта
       - name: Build
