@@ -1,45 +1,67 @@
-name: Build Windows EXE
+name: Build Windows EXE (Static)
 
 on:
   push:
     branches: [ master ]
-  # Разрешает ручной запуск из интерфейса GitHub
   workflow_dispatch:
 
 jobs:
   build:
-    # Используем среду Windows
     runs-on: windows-latest
 
     steps:
-      - name: Checkout Code
-        uses: actions/checkout@v4
+      # 1. Clone repository
+      - uses: actions/checkout@v4
 
+      # 2. Download and build vcpkg
       - name: Setup vcpkg
         run: |
           git clone --depth=1 https://github.com/microsoft/vcpkg.git
           .\vcpkg\bootstrap-vcpkg.bat
         shell: powershell
 
-      - name: Install Static Dependencies (xlsxio)
+      # 3. Install xlsxio with static linking
+      - name: Install dependencies (Static)
         run: |
-          # ИСПОЛЬЗУЕМ СТАТИЧЕСКИЙ ТРИПЛЕТ
           .\vcpkg\vcpkg install xlsxio:x64-windows-static
+          # List installed packages for verification
+          .\vcpkg\vcpkg list
+          echo "=== xlsxio static libraries ==="
+          dir "${{ github.workspace }}\vcpkg\installed\x64-windows-static\lib" | findstr xlsxio
         shell: powershell
 
+      # 4. Configure CMake for static linking
       - name: Configure CMake
-        run: cmake -B build -S . `
+        run: |
+          if (Test-Path "build") { Remove-Item -Recurse -Force build }
+          
+          cmake -B build -S . `
             -DCMAKE_BUILD_TYPE=Release `
-            -DCMAKE_TOOLCHAIN_FILE=${{ github.workspace }}\vcpkg\scripts\buildsystems\vcpkg.cmake `
-            -DVCPKG_TARGET_TRIPLET=x64-windows-static
+            -DCMAKE_TOOLCHAIN_FILE="${{ github.workspace }}\vcpkg\scripts\buildsystems\vcpkg.cmake" `
+            -DVCPKG_TARGET_TRIPLET=x64-windows-static `
+            -DCMAKE_MSVC_RUNTIME_LIBRARY=MultiThreaded `
+            -A x64
         shell: powershell
 
+      # 5. Build project
       - name: Build
         run: cmake --build build --config Release
         shell: powershell
 
+      # 6. Upload executable as artifact
       - name: Upload EXE artifact
         uses: actions/upload-artifact@v4
         with:
-          name: MyApp-exe
-          path: build/Release/MyApp.exe
+          name: MyApp-static-exe
+          path: build/Release/*.exe
+
+      # 7. Verify it's static (optional)
+      - name: Verify static executable
+        run: |
+          $exePath = Get-ChildItem "build/Release/*.exe" | Select-Object -First 1
+          if ($exePath) {
+            echo "Checking dependencies of $($exePath.Name)"
+            # This will show if there are any DLL dependencies
+            dumpbin /DEPENDENTS $exePath.FullName
+          }
+        shell: powershell
