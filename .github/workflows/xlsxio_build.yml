@@ -10,31 +10,36 @@ jobs:
     runs-on: windows-latest
 
     steps:
+      # 1. Скачиваем репозиторий
       - uses: actions/checkout@v4
 
-      - name: Download xlsxio
+      # 2. Скачиваем и билдим vcpkg
+      - name: Setup vcpkg
         run: |
-          git clone --depth=1 https://github.com/brechtsanders/xlsxio.git
-          cd xlsxio
-          if (Test-Path build) { Remove-Item -Recurse -Force build }
-          New-Item -ItemType Directory -Name build
-          cd build
-          cmake .. -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX="${{ github.workspace }}/xlsxio-install"
-          cmake --build . --config Release
-          cmake --install . --prefix "${{ github.workspace }}/xlsxio-install"
+          git clone --depth=1 https://github.com/microsoft/vcpkg.git
+          .\vcpkg\bootstrap-vcpkg.bat
         shell: powershell
 
+      # 3. Ставим xlsxio (и зависимости) через vcpkg
+      - name: Install dependencies
+        run: |
+          .\vcpkg\vcpkg install xlsxio:x64-windows
+        shell: powershell
+
+      # 4. Конфигурируем CMake с использованием vcpkg
       - name: Configure CMake
-        run: cmake -B build -S . -DCMAKE_BUILD_TYPE=Release -DCMAKE_PREFIX_PATH="${{ github.workspace }}/xlsxio-install"
+        run: cmake -B build -S . -DCMAKE_BUILD_TYPE=Release -DCMAKE_TOOLCHAIN_FILE=${{ github.workspace }}\vcpkg\scripts\buildsystems\vcpkg.cmake
         shell: powershell
 
+      # 5. Сборка проекта
       - name: Build
         run: cmake --build build --config Release
         shell: powershell
 
+      # 6. Загружаем .exe как артефакт
       - name: Upload EXE artifact
         uses: actions/upload-artifact@v4
         with:
           name: MyApp-exe
-          path: build/**/*.exe
+          path: build/Release/*.exe
 

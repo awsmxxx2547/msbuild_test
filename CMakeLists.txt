@@ -6,5 +6,7 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 add_executable(MyApp src/main.cpp)
 
+find_package(xlsxio REQUIRED)
+
 target_link_libraries(MyApp PRIVATE xlsxio_read xlsxio_write)
 
