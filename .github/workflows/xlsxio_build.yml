@@ -16,7 +16,8 @@ jobs:
         run: |
           git clone --depth=1 https://github.com/brechtsanders/xlsxio.git
           cd xlsxio
-          mkdir build
+          if (Test-Path build) { Remove-Item -Recurse -Force build }
+          New-Item -ItemType Directory -Name build
           cd build
           cmake .. -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX="${{ github.workspace }}/xlsxio-install"
           cmake --build . --config Release
