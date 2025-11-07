@@ -24,10 +24,16 @@ jobs:
       - name: Install dependencies (Static)
         run: |
           .\vcpkg\vcpkg install xlsxio:x64-windows-static
-          echo "=== Listing installed libraries ==="
-          dir "${{ github.workspace }}\vcpkg\installed\x64-windows-static\lib" -name *xlsxio*
-          dir "${{ github.workspace }}\vcpkg\installed\x64-windows-static\lib" -name zlib*
-          dir "${{ github.workspace }}\vcpkg\installed\x64-windows-static\lib" -name *expat*
+          echo "=== Listing ALL installed libraries ==="
+          dir "${{ github.workspace }}\vcpkg\installed\x64-windows-static\lib" -Recurse | Format-Table Name
+          echo "=== xlsxio libraries ==="
+          dir "${{ github.workspace }}\vcpkg\installed\x64-windows-static\lib" -Name *xlsxio*
+          echo "=== zlib libraries ==="
+          dir "${{ github.workspace }}\vcpkg\installed\x64-windows-static\lib" -Name *zlib*
+          echo "=== expat libraries ==="
+          dir "${{ github.workspace }}\vcpkg\installed\x64-windows-static\lib" -Name *expat*
+          echo "=== bzip2 libraries ==="
+          dir "${{ github.workspace }}\vcpkg\installed\x64-windows-static\lib" -Name *bzip2*
         shell: powershell
 
       # 4. Configure CMake for static linking
@@ -35,15 +41,10 @@ jobs:
         run: |
           if (Test-Path "build") { Remove-Item -Recurse -Force build }
           
-          # Set environment variable for vcpkg root
-          $vcpkgRoot = "${{ github.workspace }}\vcpkg"
-          echo "VCPKG_ROOT=$vcpkgRoot" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
-          
           cmake -B build -S . `
             -DCMAKE_BUILD_TYPE=Release `
-            -DCMAKE_TOOLCHAIN_FILE="$vcpkgRoot/scripts/buildsystems/vcpkg.cmake" `
+            -DCMAKE_TOOLCHAIN_FILE="${{ github.workspace }}\vcpkg\scripts\buildsystems\vcpkg.cmake" `
             -DVCPKG_TARGET_TRIPLET=x64-windows-static `
-            -DVCPKG_ROOT="$vcpkgRoot" `
             -A x64
         shell: powershell
 
