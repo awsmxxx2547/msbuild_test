@@ -1,4 +1,4 @@
-name: Build Windows EXE (xlsxio)
+name: Build Windows EXE
 
 on:
   push:
@@ -12,22 +12,28 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Setup vcpkg
-        uses: vcpkg/setup-vcpkg@v2025-08-02
-        with:
-          vcpkg-root: vcpkg
-
-      - name: Install dependencies
-        run: vcpkg install xlsxio:x64-windows
+      - name: Download xlsxio
+        run: |
+          git clone --depth=1 https://github.com/brechtsanders/xlsxio.git
+          cd xlsxio
+          mkdir build
+          cd build
+          cmake .. -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX="${{ github.workspace }}/xlsxio-install"
+          cmake --build . --config Release
+          cmake --install . --prefix "${{ github.workspace }}/xlsxio-install"
+        shell: powershell
 
       - name: Configure CMake
-        run: cmake -B build -S . -DCMAKE_BUILD_TYPE=Release -DCMAKE_TOOLCHAIN_FILE=${{ env.VCPKG_ROOT }}/scripts/buildsystems/vcpkg.cmake
+        run: cmake -B build -S . -DCMAKE_BUILD_TYPE=Release -DCMAKE_PREFIX_PATH="${{ github.workspace }}/xlsxio-install"
+        shell: powershell
 
       - name: Build
         run: cmake --build build --config Release
+        shell: powershell
 
       - name: Upload EXE artifact
         uses: actions/upload-artifact@v4
         with:
           name: MyApp-exe
           path: build/**/*.exe
+
