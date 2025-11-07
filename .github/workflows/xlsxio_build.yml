@@ -20,23 +20,17 @@ jobs:
           .\vcpkg\bootstrap-vcpkg.bat
         shell: powershell
 
-      # 3. Install xlsxio with static linking and dependencies
+      # 3. Install xlsxio with static linking
       - name: Install dependencies (Static)
         run: |
           .\vcpkg\vcpkg install xlsxio:x64-windows-static
-          echo "=== Listing ALL installed libraries ==="
-          dir "${{ github.workspace }}\vcpkg\installed\x64-windows-static\lib" -Recurse | Format-Table Name
-          echo "=== xlsxio libraries ==="
-          dir "${{ github.workspace }}\vcpkg\installed\x64-windows-static\lib" -Name *xlsxio*
-          echo "=== zlib libraries ==="
-          dir "${{ github.workspace }}\vcpkg\installed\x64-windows-static\lib" -Name *zlib*
-          echo "=== expat libraries ==="
-          dir "${{ github.workspace }}\vcpkg\installed\x64-windows-static\lib" -Name *expat*
-          echo "=== bzip2 libraries ==="
-          dir "${{ github.workspace }}\vcpkg\installed\x64-windows-static\lib" -Name *bzip2*
+          echo "=== Checking xlsxio library files ==="
+          Get-ChildItem -Path "${{ github.workspace }}\vcpkg\installed\x64-windows-static\lib" -Filter *xlsxio* | Format-Table Name, Length
+          echo "=== Checking for static libraries ==="
+          Get-ChildItem -Path "${{ github.workspace }}\vcpkg\installed\x64-windows-static\lib" -Recurse | Where-Object {$_.Name -like "*static*"} | Format-Table Name
         shell: powershell
 
-      # 4. Configure CMake for static linking
+      # 4. Configure CMake
       - name: Configure CMake
         run: |
           if (Test-Path "build") { Remove-Item -Recurse -Force build }
