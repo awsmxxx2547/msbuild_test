@@ -21,3 +21,4 @@ message(STATUS "xlsxio version: ${xlsxio_VERSION}")
 # Линкуем с импортированными целями. 
 # Vcpkg гарантирует, что эти цели теперь статически связаны.
 target_link_libraries(MyApp PRIVATE xlsxio::xlsxio_write xlsxio::xlsxio_read)
+
